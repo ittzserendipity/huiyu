@@ -64,6 +64,10 @@ def classify(title,cond_ok=True):
     if not (re.search(r"魔女の旅|イレイナ|リリエール",t) or re.search(r"(白石定規|あずーる).{0,20}(サイン|直筆)",t)): return None,"非魔女之旅"
     if EXCL.search(t) and not re.search(r"特装版|特裝版",t): return None,"排除類別"
     if GOODS.search(t) and not BONUSWORD.search(t): return None,"一般周邊"
+    # 單獨賣的特典小物不要（附書、或屬於要的店鋪特典類者除外）
+    SMALL=r"リーフレット|SSペーパー|イラストカード|ブロマイド|ポストカード|クリアカード|ホログラム|ミニ色紙|しおり|栞"
+    KEEP=r"付き|付属|\d+\s*巻(?!.*のみ)|特装|限定版|サイン|初版|帯|巻セット|全巻|セット|小説|ノベル|単行本|本体|書籍|色紙(?!.*ミニ)|タペストリー|タペ|収納|BOX|デジパック|有償|キャストトーク|ミニノート|カバー|画集|設定"
+    if re.search(SMALL,t) and not re.search(KEEP,t) and not re.search(r"メロン|melon",t,re.I): return None,"單獨特典小物"   # Melonbooks 小冊單獨賣也要
     f=[k for k,r in FL.items() if r.search(t)]
     if re.search(r"[3３]冊セット\s*特装版",t) and "套組" in f: f.remove("套組")   # 第20卷特裝版本身，不是套組
     v=vols(t)
@@ -192,6 +196,7 @@ def amazon():
             m=re.search(r"([￥¥]\s*[\d,]+|USD\s*[\d.]+)\s*\((\d+)点の中古品と新品\)",txt)
             if not m: continue
             title=re.sub(r"\s+"," ",t.group(1)).strip()
+            if 21 not in vols(unicodedata.normalize("NFKC",title)): continue
             add("Amazon",a.group(1),f"https://www.amazon.co.jp/gp/offer-listing/{a.group(1)}/?f_used=true",title,0,
                 cond=f"中古品と新品 {m.group(2)} 點，最低 {m.group(1)}",created="不明",created_ts=0,note="Amazon 出品照片多為示意圖：待確認"); n+=1
         time.sleep(1)
@@ -224,6 +229,7 @@ def catalog_shops():
                 pr=re.search(r'productItem__price[^>]*>\s*([\d,]+)',seg)
                 out=bool(re.search(r"在庫なし|品切",seg[:2500]))
                 if out: continue
+                if 21 not in vols(unicodedata.normalize("NFKC",mm.group(3))) and "(21)" not in mm.group(3): continue
                 add("Book Off",mm.group(2),f"https://shopping.bookoff.co.jp/{mm.group(1)}/{mm.group(2)}",mm.group(3),int(pr.group(1).replace(",","")) if pr else 0,
                     cond="中古" if mm.group(1)=="used" else "新品",created="不明",created_ts=0,note="照片為示意圖"); n+=1
         except Exception as e: log("Book Off錯誤",kw,e)
@@ -233,6 +239,7 @@ def catalog_shops():
                 d=re.search(r'href="/detail/(\d+)/" class="c-link--blue c-cassette__title">\s*<span>([^<]+)</span>',blk)
                 if not d or "c-cassette--disabled" in blk[:60] or "在庫なし" in blk: continue
                 pr=re.search(r'([\d,]+)\s*円',blk)
+                if 21 not in vols(unicodedata.normalize("NFKC",d.group(2))) and "(21)" not in d.group(2): continue
                 add("NetOff",d.group(1),f"https://www.netoff.co.jp/detail/{d.group(1)}/",d.group(2),int(pr.group(1).replace(",","")) if pr else 0,
                     cond="中古",created="不明",created_ts=0,note="照片為示意圖"); n+=1
         except Exception as e: log("NetOff錯誤",kw,e)
